@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evalify — Faculty Performance System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f7f7f5;--surface:#ffffff;--border:#e4e4e0;--border2:#d0d0cc;
+  --text:#1a1a18;--text2:#5a5a55;--muted:#9a9a95;
+  --accent:#2563eb;--accent-light:#eff4ff;
+  --green:#16a34a;--green-light:#f0fdf4;
+  --red:#dc2626;--red-light:#fef2f2;
+  --amber:#d97706;--amber-light:#fffbeb;
+  --r:6px;--r-lg:10px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+.login-box{width:400px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:36px;animation:fadeIn .3s ease;}
+.wordmark{font-size:22px;font-weight:600;color:var(--text);letter-spacing:-.5px;margin-bottom:2px;}
+.wordmark span{color:var(--accent);}
+.auth-sub{font-size:12px;color:var(--muted);margin-bottom:28px;}
+
+.role-pills{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px;}
+.role-pill{padding:10px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;text-align:center;transition:all .15s;background:var(--surface);}
+.role-pill:hover{border-color:var(--border2);}
+.role-pill.active{border-color:var(--accent);background:var(--accent-light);}
+.role-pill-icon{font-size:16px;margin-bottom:3px;}
+.role-pill-name{font-size:11px;font-weight:500;color:var(--text2);}
+.role-pill.active .role-pill-name{color:var(--accent);}
+
+.field-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;display:block;}
+.inp{width:100%;padding:8px 11px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color .15s;margin-bottom:10px;}
+.inp:focus{border-color:var(--accent);}
+.inp::placeholder{color:var(--muted);}
+.inp.error{border-color:var(--red)!important;}
+select.inp option{background:var(--surface);}
+
+.id-login-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;transition:border-color .15s;}
+.id-login-wrap:focus-within{border-color:var(--accent);}
+.id-login-wrap.err{border-color:var(--red);}
+.id-login-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.id-login-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500;}
+.id-login-badge.student{background:#eff4ff;color:var(--accent);}
+.id-login-badge.ph{background:#f0fdf4;color:var(--green);}
+.id-login-badge.dean{background:#fef2f2;color:var(--red);}
+.id-login-badge.admin{background:#f5f3ff;color:#7c3aed;}
+.id-login-label{font-size:10px;font-weight:500;color:var(--muted);}
+.id-login-wrap .inp{background:transparent;border:none;padding:0;margin-bottom:0;font-size:13px;}
+.id-login-wrap .inp:focus{box-shadow:none;}
+.id-login-hint{font-size:10px;color:var(--muted);margin-top:4px;}
+
+.btn-auth{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-auth:hover{background:#1d4ed8;}
+.btn-auth:disabled{opacity:.5;cursor:not-allowed;}
+.auth-err{background:var(--red-light);border:1px solid #fca5a5;border-radius:var(--r);padding:9px 12px;font-size:12px;color:var(--red);margin-bottom:12px;display:none;}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+
+#app{display:flex;min-height:100vh;}
+.sb{width:200px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0;}
+.sb-brand{padding:20px 18px 16px;border-bottom:1px solid var(--border);}
+.sb-wordmark{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-.3px;}
+.sb-wordmark span{color:var(--accent);}
+.sb-period{font-size:10px;color:var(--muted);margin-top:2px;}
+.sb-user{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.sb-avatar{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;background:var(--accent-light);color:var(--accent);}
+.sb-uname{font-size:12px;font-weight:500;color:var(--text);}
+.sb-urole{font-size:10px;color:var(--muted);}
+.sb-nav{flex:1;padding:10px 0;}
+.sb-section{padding:10px 18px 4px;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 18px;cursor:pointer;font-size:12px;color:var(--text2);transition:all .1s;border-left:2px solid transparent;}
+.sb-item:hover{color:var(--text);background:var(--bg);}
+.sb-item.on{color:var(--accent);background:var(--accent-light);border-left-color:var(--accent);}
+.sb-item .ico{width:13px;height:13px;flex-shrink:0;}
+.sb-foot{padding:12px 18px;border-top:1px solid var(--border);}
+.btn-out{width:100%;padding:7px 10px;background:transparent;border:1px solid var(--border);border-radius:var(--r);color:var(--text2);font-family:var(--font);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .1s;}
+.btn-out:hover{border-color:var(--red);color:var(--red);}
+
+.main{flex:1;overflow-y:auto;background:var(--bg);}
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-title{font-size:14px;font-weight:600;color:var(--text);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.topbar-user-av{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;background:var(--accent-light);color:var(--accent);}
+.anon-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:var(--green-light);color:var(--green);border:1px solid #bbf7d0;font-size:10px;font-weight:500;}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:var(--font);font-size:12px;cursor:pointer;transition:all .1s;}
+.btn:hover{border-color:var(--border2);color:var(--text);}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:#1d4ed8;color:#fff;}
+
+.content{padding:24px 28px;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:500;margin-bottom:8px;}
+.stat-val{font-size:28px;font-weight:600;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.stat-accent{border-left:3px solid var(--accent);}
+.stat-green{border-left:3px solid var(--green);}
+.stat-amber{border-left:3px solid var(--amber);}
+.stat-red{border-left:3px solid var(--red);}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-title{font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.5px;}
+.chart-wrap{position:relative;height:180px;}
+
+table{width:100%;border-collapse:collapse;}
+th{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+td{padding:10px 10px;font-size:12px;border-bottom:1px solid var(--border);color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg);}
+
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;}
+.tag-green{background:var(--green-light);color:var(--green);}
+.tag-blue{background:var(--accent-light);color:var(--accent);}
+.tag-amber{background:var(--amber-light);color:var(--amber);}
+.tag-red{background:var(--red-light);color:var(--red);}
+
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;}
+.tc-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.tc-av{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
+.tc-name{font-size:13px;font-weight:500;color:var(--text);}
+.tc-dept{font-size:11px;color:var(--muted);}
+.tc-score-row{display:flex;align-items:baseline;gap:4px;margin-bottom:10px;}
+.tc-score-big{font-size:32px;font-weight:600;line-height:1;}
+.tc-score-max{font-size:12px;color:var(--muted);}
+.tc-bars{display:flex;flex-direction:column;gap:6px;}
+.tc-bar-row{display:flex;align-items:center;gap:8px;}
+.tc-bar-label{font-size:10px;color:var(--muted);width:68px;flex-shrink:0;}
+.tc-bar-track{flex:1;height:3px;background:var(--border);border-radius:3px;overflow:hidden;}
+.tc-bar-fill{height:100%;border-radius:3px;}
+.tc-bar-val{font-size:11px;font-weight:500;width:24px;text-align:right;color:var(--text2);}
+
+.eval-hero{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 24px;margin-bottom:16px;display:flex;align-items:center;gap:14px;}
+.eval-teacher-av{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;flex-shrink:0;}
+.eval-hero-name{font-size:18px;font-weight:600;color:var(--text);}
+.eval-hero-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+
+.criteria-section{margin-bottom:20px;}
+.criteria-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.crit-row{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:7px;transition:border-color .1s;}
+.crit-row.rated{border-color:var(--accent);}
+.crit-info{flex:1;}
+.crit-name{font-size:13px;font-weight:500;color:var(--text);}
+.crit-desc{font-size:11px;color:var(--muted);margin-top:1px;}
+.stars{display:flex;gap:4px;}
+.star{width:26px;height:26px;background:var(--surface);border:1px solid var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:all .1s;color:var(--muted);}
+.star:hover{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+.star.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
+.crit-num{font-size:14px;font-weight:600;width:24px;text-align:center;color:var(--accent);}
+
+.fl{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.fl label{font-size:11px;font-weight:500;color:var(--text2);}
+select.inp,textarea.inp{resize:vertical;}
+
+.audit-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.audit-row:last-child{border-bottom:none;}
+.audit-dot{width:6px;height:6px;border-radius:50%;margin-top:7px;flex-shrink:0;}
+.audit-act{font-size:12px;color:var(--text2);}
+.audit-meta{font-size:10px;color:var(--muted);margin-top:2px;}
+
+.prog-track{height:4px;background:var(--border);border-radius:20px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:20px;}
+
+.notif{position:fixed;top:16px;right:16px;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;font-size:12px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);animation:fadeIn .25s ease;max-width:300px;}
+.notif.ok{border-left:3px solid var(--green);}.notif.inf{border-left:3px solid var(--accent);}.notif.err{border-left:3px solid var(--red);}
+
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.toggle{width:36px;height:20px;background:var(--border);border-radius:20px;cursor:pointer;position:relative;transition:background .2s;border:none;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:white;top:3px;left:3px;transition:transform .2s;}
+.toggle.on::after{transform:translateX(16px);}
+
+.privacy-banner{background:var(--green-light);border:1px solid #bbf7d0;border-radius:var(--r);padding:9px 12px;font-size:11px;color:var(--green);margin-bottom:14px;display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.anon-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:var(--green-light);color:var(--green);border:1px solid #bbf7d0;font-size:10px;font-weight:500;margin-top:6px;}
+
+/* Success overlay for submission */
+.success-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9998;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;}
+.success-box{background:var(--surface);border-radius:var(--r-lg);padding:36px 40px;text-align:center;max-width:360px;width:90%;animation:fadeIn .3s ease;}
+.success-icon{width:56px;height:56px;border-radius:50%;background:var(--green-light);border:2px solid #bbf7d0;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;}
+.success-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.success-sub{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+
+@media(max-width:768px){.sb{display:none;}.content{padding:14px;}.g2,.g3{grid-template-columns:1fr;}.stats-row{grid-template-columns:1fr 1fr;}.login-box{width:94vw;padding:24px 18px;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="auth-screen">
+  <div class="login-box">
+    <div class="wordmark">eval<span>ify</span></div>
+    <div class="auth-sub">Faculty Performance Evaluation · AY 2024–2025</div>
+    <div style="font-size:11px;font-weight:500;color:var(--text2);margin-bottom:8px;">Sign in as</div>
+    <div class="role-pills" id="login-pills">
+      <div class="role-pill active" onclick="pickRole(this,'student')"><div class="role-pill-icon">🎓</div><div class="role-pill-name">Student</div></div>
+      <div class="role-pill" onclick="pickRole(this,'ph')"><div class="role-pill-icon">📋</div><div class="role-pill-name">Prog. Head</div></div>
+      <div class="role-pill" onclick="pickRole(this,'dean')"><div class="role-pill-icon">🏛️</div><div class="role-pill-name">Dean</div></div>
+      <div class="role-pill" onclick="pickRole(this,'admin')"><div class="role-pill-icon">⚙️</div><div class="role-pill-name">Admin</div></div>
+    </div>
+    <div class="auth-err" id="login-err"></div>
+    <span class="field-label">Gmail Address</span>
+    <input class="inp" id="login-email" type="email" placeholder="yourname@gmail.com" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="id-login-wrap" id="id-login-wrap">
+      <div class="id-login-meta">
+        <span class="id-login-badge student" id="id-login-badge">🎓 Student</span>
+        <span class="id-login-label" id="id-login-label">Student ID Number</span>
+      </div>
+      <input class="inp" id="login-id" type="text" placeholder="e.g. 2023-07-00262" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="id-login-hint" id="id-login-hint">Format: YYYY-MM-NNNNN · Found on your school ID card</div>
+    </div>
+    <button class="btn-auth" id="login-btn" onclick="doLogin()">Log in</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;">
+  <aside class="sb">
+    <div class="sb-brand"><div class="sb-wordmark">eval<span>ify</span></div><div class="sb-period" id="sb-period">AY 2024–25 · Sem 2</div></div>
+    <div class="sb-user"><div class="sb-avatar" id="sb-av"></div><div><div class="sb-uname" id="sb-name"></div><div class="sb-urole" id="sb-role"></div></div></div>
+    <nav class="sb-nav" id="sb-nav"></nav>
+    <div class="sb-foot"><button class="btn-out" onclick="doLogout()"><svg style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</button></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="tb-title">Dashboard</div>
+      <div class="topbar-right">
+        <button class="btn" onclick="sendReminders()">Send Reminders</button>
+        <button class="btn" onclick="doExportCSV()">Export CSV</button>
+        <button class="btn btn-primary" onclick="doExportPDF()">Export PDF</button>
+        <div class="topbar-user-av" id="tb-av"></div>
+        <span class="anon-tag">🔒 Anonymous</span>
+      </div>
+    </div>
+    <div class="content" id="panel"></div>
+  </main>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+var TEACHERS=[
+  {id:"T1",name:"Dr. Maria Santos",dept:"Computer Science",initials:"MS",color:"var(--accent)",bg:"var(--accent-light)"},
+  {id:"T2",name:"Prof. Juan Reyes",dept:"Mathematics",initials:"JR",color:"var(--green)",bg:"var(--green-light)"},
+  {id:"T3",name:"Dr. Ana Lim",dept:"Engineering",initials:"AL",color:"var(--red)",bg:"var(--red-light)"},
+  {id:"T4",name:"Prof. Carlos Cruz",dept:"Science",initials:"CC",color:"var(--amber)",bg:"var(--amber-light)"}
+];
+var CRITERIA={
+  student:[{id:"s1",name:"Teaching Clarity",desc:"Explains concepts clearly and effectively",w:0.20},{id:"s2",name:"Engagement",desc:"Motivates and involves students actively",w:0.15},{id:"s3",name:"Fairness",desc:"Equitable grading and respectful treatment",w:0.15}],
+  ph:[{id:"p1",name:"Curriculum Alignment",desc:"Lessons match program learning outcomes",w:0.10},{id:"p2",name:"Assessment Design",desc:"Varied, aligned, and authentic assessments",w:0.10},{id:"p3",name:"Mentoring",desc:"Guides students toward academic success",w:0.10}],
+  dean:[{id:"d1",name:"Attendance",desc:"Consistent presence and punctuality",w:0.07},{id:"d2",name:"Commitment",desc:"Dedication beyond classroom responsibilities",w:0.07},{id:"d3",name:"Instruction Quality",desc:"Observed overall teaching quality",w:0.06}]
+};
+var SCORES={
+  T1:{student:{s1:4.5,s2:4.2,s3:4.8},ph:{p1:4.6,p2:4.3,p3:4.7},dean:{d1:4.9,d2:4.5,d3:4.4}},
+  T2:{student:{s1:3.8,s2:3.5,s3:4.0},ph:{p1:3.9,p2:4.1,p3:3.7},dean:{d1:4.2,d2:3.8,d3:4.0}},
+  T3:{student:{s1:4.9,s2:4.7,s3:4.6},ph:{p1:4.8,p2:4.9,p3:4.7},dean:{d1:5.0,d2:4.8,d3:4.9}},
+  T4:{student:{s1:3.2,s2:3.6,s3:3.4},ph:{p1:3.5,p2:3.3,p3:3.7},dean:{d1:3.8,d2:3.5,d3:3.6}}
+};
+
+// Track which teachers have been evaluated this session (per role)
+var SUBMITTED = {};  // e.g. {"student":{"T1":true,"T3":true}}
+
+var AUDIT=[
+  {t:"2025-03-15 14:22",who:"System",what:"Exported Q3 evaluation report as PDF",type:"export"},
+  {t:"2025-03-15 09:15",who:"Dean [Anon]",what:"Submitted evaluation for Prof. Juan Reyes",type:"eval"},
+  {t:"2025-03-15 08:30",who:"System",what:"Sent email reminders to 8 pending evaluators",type:"remind"},
+  {t:"2025-03-14 11:40",who:"Prog. Head [Anon]",what:"Submitted evaluation for Dr. Maria Santos",type:"eval"},
+  {t:"2025-03-14 10:22",who:"Student [Anon]",what:"Submitted evaluation for Prof. Juan Reyes",type:"eval"},
+  {t:"2025-03-14 10:05",who:"Student [Anon]",what:"Submitted evaluation for Dr. Maria Santos",type:"eval"},
+  {t:"2025-03-14 09:12",who:"System",what:"Evaluation period opened for Semester 2 2024-2025",type:"system"}
+];
+var ROLES={
+  student:{label:"Student",nav:["dashboard","evaluate","history"]},
+  ph:{label:"Program Head",nav:["dashboard","evaluate","reports","audit"]},
+  dean:{label:"Dean",nav:["dashboard","evaluate","reports","audit"]},
+  admin:{label:"Admin",nav:["dashboard","faculty","reports","audit","settings"]}
+};
+var NAV_LABELS={dashboard:"Dashboard",evaluate:"Evaluate",reports:"Reports",audit:"Audit Trail",faculty:"Faculty",history:"My History",settings:"Settings"};
+var NAV_ICONS={
+  dashboard:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  evaluate:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  reports:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  audit:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  faculty:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>',
+  history:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>',
+  settings:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>'
+};
+var ID_FIELD={
+  student:{badge:"🎓 Student",cls:"student",label:"Student ID Number",ph:"e.g. 2023-07-00262",hint:"Format: YYYY-MM-NNNNN · Found on your school ID card"},
+  ph:{badge:"📋 Prog. Head",cls:"ph",label:"Faculty / Program Head ID",ph:"e.g. PH-2024-0042",hint:"Format: PH-YYYY-NNNN · Assigned by the Registrar's Office"},
+  dean:{badge:"🏛️ Dean",cls:"dean",label:"Dean / Office ID",ph:"e.g. DN-2024-0008",hint:"Format: DN-YYYY-NNNN · Assigned by the Office of the President"},
+  admin:{badge:"⚙️ Admin",cls:"admin",label:"System Administrator ID",ph:"e.g. ADM-2024-0001",hint:"Format: ADM-YYYY-NNNN · Provided by the IT Department"}
+};
+var currentRole="student",currentPage="dashboard",charts={},ratingVals={};
+var PERIOD={ay:"2024–2025",sem:"Semester 2",deadline:"2025-03-31"};
+
+// ── AUTH HELPERS ──────────────────────────────────────────────────────────────
+function showScreen(id){
+  document.getElementById("login-screen").style.display=id==="login-screen"?"flex":"none";
+  document.getElementById("app").style.display=id==="app"?"flex":"none";
+}
+function showErr(msg){var e=document.getElementById("login-err");e.textContent=msg;e.style.display="block";}
+function clearErr(){var e=document.getElementById("login-err");e.style.display="none";e.textContent="";document.getElementById("id-login-wrap").classList.remove("err");document.getElementById("login-id").classList.remove("error");document.getElementById("login-email").classList.remove("error");}
+function setBtnLoading(on){var b=document.getElementById("login-btn");b.disabled=on;b.innerHTML=on?'<div class="spinner"></div> Signing in…':"Log in";}
+function toast(msg,type){var el=document.createElement("div");el.className="notif "+(type||"ok");el.innerHTML="<span>"+(type==="err"?"✕":type==="inf"?"ℹ":"✓")+"</span> "+msg;document.body.appendChild(el);setTimeout(function(){el.remove();},3200);}
+
+function pickRole(el,r){
+  document.querySelectorAll(".role-pill").forEach(function(p){p.classList.remove("active");});
+  el.classList.add("active");currentRole=r;
+  var f=ID_FIELD[r];
+  document.getElementById("id-login-badge").textContent=f.badge;
+  document.getElementById("id-login-badge").className="id-login-badge "+f.cls;
+  document.getElementById("id-login-label").textContent=f.label;
+  document.getElementById("login-id").placeholder=f.ph;
+  document.getElementById("login-id").value="";
+  document.getElementById("id-login-hint").textContent=f.hint;
+  clearErr();
+}
+
+// ── LOGIN — pure client-side mock (no PHP needed) ─────────────────────────────
+function doLogin(){
+  clearErr();
+  var email=(document.getElementById("login-email").value||"").trim();
+  var idVal=(document.getElementById("login-id").value||"").trim();
+  if(!email||!idVal){
+    if(!email)document.getElementById("login-email").classList.add("error");
+    if(!idVal){document.getElementById("id-login-wrap").classList.add("err");document.getElementById("login-id").classList.add("error");}
+    showErr("Please fill in all fields.");return;
+  }
+  if(!email.toLowerCase().endsWith("@gmail.com")){
+    document.getElementById("login-email").classList.add("error");
+    showErr("Please use a Gmail address (e.g. yourname@gmail.com).");return;
+  }
+  setBtnLoading(true);
+  // Simulate a short network delay then log in
+  setTimeout(function(){
+    setBtnLoading(false);
+    SUBMITTED[currentRole]=SUBMITTED[currentRole]||{};
+    enterApp(email,currentRole);
+  },600);
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────────────────────
+function doLogout(){
+  Object.values(charts).forEach(function(c){try{c.destroy();}catch(e){}});
+  charts={};ratingVals={};
+  showScreen("login-screen");
+}
+
+// ── ENTER APP ─────────────────────────────────────────────────────────────────
+function enterApp(email,role){
+  showScreen("app");
+  var rc=ROLES[role]||ROLES.student;currentRole=role;
+  var ini={student:"ST",ph:"PH",dean:"DN",admin:"AD"}[role]||"??";
+  document.getElementById("sb-av").textContent=ini;
+  document.getElementById("sb-name").textContent=rc.label+" Account";
+  document.getElementById("sb-role").textContent="Identity protected";
+  document.getElementById("tb-av").textContent=ini;
+  var nav=document.getElementById("sb-nav"),h='<div class="sb-section">Menu</div>';
+  rc.nav.forEach(function(n){h+='<div class="sb-item" data-n="'+n+'" onclick="go(\''+n+'\')">'+NAV_ICONS[n]+" "+NAV_LABELS[n]+"</div>";});
+  nav.innerHTML=h;
+  applyPeriod();
+  go("dashboard");
+}
+
+function anonLabel(r){return{student:"Student [Anon]",ph:"Prog. Head [Anon]",dean:"Dean [Anon]",admin:"Admin [Anon]"}[r]||"Evaluator [Anon]";}
+
+// ── SCORING HELPERS ───────────────────────────────────────────────────────────
+function composite(tid){
+  var all=CRITERIA.student.concat(CRITERIA.ph,CRITERIA.dean),tot=0;
+  all.forEach(function(c){var g=c.id[0]==="s"?"student":c.id[0]==="p"?"ph":"dean";tot+=(SCORES[tid][g][c.id]||0)*c.w*20;});
+  return Math.round(tot*10)/10;
+}
+function scoreTag(s){if(s>=90)return'<span class="tag tag-green">Excellent</span>';if(s>=75)return'<span class="tag tag-blue">Good</span>';if(s>=60)return'<span class="tag tag-amber">Average</span>';return'<span class="tag tag-red">Needs Work</span>';}
+function scoreColor(s){if(s>=90)return"var(--green)";if(s>=75)return"var(--accent)";if(s>=60)return"var(--amber)";return"var(--red)";}
+function grpAvg(tid,g){var v=Object.values(SCORES[tid][g]);return(v.reduce(function(a,b){return a+b;},0)/v.length).toFixed(1);}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+function go(p){
+  currentPage=p;
+  document.querySelectorAll(".sb-item").forEach(function(e){e.classList.toggle("on",e.dataset.n===p);});
+  document.getElementById("tb-title").textContent=NAV_LABELS[p]||p;
+  Object.values(charts).forEach(function(c){try{c.destroy();}catch(e){}});
+  charts={};document.getElementById("panel").innerHTML="";
+  ({dashboard:rDash,evaluate:rEval,reports:rReports,audit:rAudit,faculty:rFaculty,history:rHistory,settings:rSettings}[p]||function(){document.getElementById("panel").innerHTML='<div class="card"><p style="color:var(--muted)">Coming soon.</p></div>';})();
+  setTimeout(initCharts,80);
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function rDash(){
+  var P=document.getElementById("panel");
+  var sc=TEACHERS.map(function(t){return{t:t,s:composite(t.id)};});
+  var avg=(sc.reduce(function(a,b){return a+b.s;},0)/sc.length).toFixed(1);
+  var submitted=SUBMITTED[currentRole]||{};
+
+  if(currentRole==="student"){
+    var doneCount=Object.keys(submitted).length;
+    var pH="";
+    TEACHERS.forEach(function(t){
+      var isDone=!!submitted[t.id];
+      var act=isDone?'<span class="tag tag-green">Done</span>':'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="go(\'evaluate\')">Evaluate</button>';
+      pH+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:30px;height:30px;border-radius:7px;background:'+t.bg+';color:'+t.color+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;">'+t.initials+'</div><div style="flex:1"><div style="font-size:12px;font-weight:500;color:var(--text)">'+t.name+'</div><div style="font-size:10px;color:var(--muted)">'+t.dept+'</div></div>'+act+'</div>';
+    });
+    var ranked=sc.slice().sort(function(a,b){return b.s-a.s;}),rr="";
+    ranked.forEach(function(x,i){rr+='<tr><td style="font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums">#'+(i+1)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div style="width:24px;height:24px;border-radius:5px;background:'+x.t.bg+';color:'+x.t.color+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">'+x.t.initials+'</div>'+x.t.name+'</div></td><td>'+x.t.dept+'</td><td style="font-weight:600;color:'+scoreColor(x.s)+'">'+x.s+'</td><td>'+scoreTag(x.s)+'</td></tr>';});
+    var remaining=TEACHERS.length-doneCount;
+    P.innerHTML='<div class="stats-row"><div class="stat stat-accent"><div class="stat-label">Dept. Average</div><div class="stat-val">'+avg+'</div><div class="stat-sub">out of 100</div></div><div class="stat stat-green"><div class="stat-label">Completed</div><div class="stat-val">'+doneCount+'/'+TEACHERS.length+'</div><div class="stat-sub">'+remaining+' remaining</div></div><div class="stat stat-amber"><div class="stat-label">Deadline</div><div class="stat-val">Mar 31</div><div class="stat-sub">17 days left</div></div><div class="stat stat-red"><div class="stat-label">Your Streak</div><div class="stat-val">3</div><div class="stat-sub">consecutive sems</div></div></div><div class="g2" style="margin-bottom:16px"><div class="card"><div class="card-head"><div class="card-title">Pending Evaluations</div></div>'+pH+'</div><div class="card"><div class="card-head"><div class="card-title">Score Overview</div></div><div class="chart-wrap"><canvas id="c-overview"></canvas></div></div></div><div class="card"><div class="card-head"><div class="card-title">Faculty Rankings</div></div><div class="tbl-wrap"><table><thead><tr><th>Rank</th><th>Faculty</th><th>Dept</th><th>Score</th><th>Status</th></tr></thead><tbody>'+rr+'</tbody></table></div></div>';
+  } else if(currentRole==="admin"){
+    P.innerHTML='<div class="stats-row"><div class="stat stat-accent"><div class="stat-label">Overall Average</div><div class="stat-val">'+avg+'</div><div class="stat-sub">composite score</div></div><div class="stat stat-green"><div class="stat-label">Submitted</div><div class="stat-val">35</div><div class="stat-sub">of 48 total</div></div><div class="stat stat-amber"><div class="stat-label">Pending</div><div class="stat-val">13</div><div class="stat-sub">reminder sent</div></div><div class="stat stat-red"><div class="stat-label">Faculty</div><div class="stat-val">'+TEACHERS.length+'</div><div class="stat-sub">this semester</div></div></div><div class="g2"><div class="card"><div class="card-head"><div class="card-title">Score Distribution</div></div><div class="chart-wrap"><canvas id="c-dist"></canvas></div></div><div class="card"><div class="card-head"><div class="card-title">Semester Trend</div></div><div class="chart-wrap"><canvas id="c-trend"></canvas></div></div></div>';
+  } else {
+    var ex=sc.filter(function(x){return x.s>=90;}).length,nw=sc.filter(function(x){return x.s<75;}).length,qL="";
+    TEACHERS.forEach(function(t){
+      var isDone=!!(SUBMITTED[currentRole]||{})[t.id];
+      var act=isDone?'<span class="tag tag-green">Done</span>':'<button class="btn btn-primary" style="font-size:11px;padding:4px 10px" onclick="go(\'evaluate\')">Evaluate</button>';
+      qL+='<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)"><div style="width:28px;height:28px;border-radius:6px;background:'+t.bg+';color:'+t.color+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">'+t.initials+'</div><div style="flex:1"><div style="font-size:12px;font-weight:500">'+t.name+'</div><div style="font-size:10px;color:var(--muted)">'+t.dept+'</div></div>'+act+'</div>';
+    });
+    P.innerHTML='<div class="stats-row"><div class="stat stat-accent"><div class="stat-label">Average Score</div><div class="stat-val">'+avg+'</div><div class="stat-sub">all faculty</div></div><div class="stat stat-green"><div class="stat-label">Excellent</div><div class="stat-val">'+ex+'</div><div class="stat-sub">≥ 90 points</div></div><div class="stat stat-amber"><div class="stat-label">Needs Work</div><div class="stat-val">'+nw+'</div><div class="stat-sub">below 75</div></div><div class="stat stat-red"><div class="stat-label">Faculty</div><div class="stat-val">'+TEACHERS.length+'</div><div class="stat-sub">this semester</div></div></div><div class="g2"><div class="card"><div class="card-head"><div class="card-title">Faculty Scores</div></div><div class="chart-wrap"><canvas id="c-fac"></canvas></div></div><div class="card"><div class="card-head"><div class="card-title">Quick Evaluate</div></div>'+qL+'</div></div>';
+  }
+}
+
+// ── EVALUATE ──────────────────────────────────────────────────────────────────
+function rEval(){
+  // Find the first teacher not yet evaluated, default to T1
+  var submitted=SUBMITTED[currentRole]||{};
+  var firstPending=TEACHERS.find(function(t){return !submitted[t.id];})||TEACHERS[0];
+  var opts="";
+  TEACHERS.forEach(function(t){
+    var done=!!submitted[t.id];
+    opts+='<option value="'+t.id+'"'+(t.id===firstPending.id?" selected":"")+'>'+(done?"✓ ":"")+t.name+" — "+t.dept+(done?" (submitted)":"")+'</option>';
+  });
+  document.getElementById("panel").innerHTML='<div class="fl" style="margin-bottom:16px"><label>Select Faculty</label><select class="inp" id="ev-t" style="max-width:360px" onchange="buildEval()">'+opts+'</select></div><div id="ev-body"></div>';
+  buildEval();
+}
+
+function buildEval(){
+  var tid=(document.getElementById("ev-t")||{value:"T1"}).value||"T1";
+  var t=TEACHERS.find(function(x){return x.id===tid;});
+  var grp=currentRole==="ph"?"ph":currentRole==="dean"?"dean":"student";
+  var crit=CRITERIA[grp],wt={student:50,ph:30,dean:20}[currentRole]||50;
+  var rLabel={student:"Student",ph:"Program Head",dean:"Dean"}[currentRole]||"Student";
+  var submitted=SUBMITTED[currentRole]||{};
+  var alreadyDone=!!submitted[tid];
+  ratingVals={};
+
+  if(alreadyDone){
+    document.getElementById("ev-body").innerHTML=
+      '<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:var(--r-lg);padding:24px;text-align:center;">'+
+      '<div style="font-size:24px;margin-bottom:10px;">✅</div>'+
+      '<div style="font-size:14px;font-weight:600;color:var(--green);margin-bottom:6px;">Evaluation already submitted</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">You have already submitted an anonymous evaluation for '+t.name+' this semester.</div>'+
+      '<button class="btn btn-primary" onclick="go(\'dashboard\')">Back to Dashboard</button></div>';
+    return;
+  }
+
+  var rows="";
+  crit.forEach(function(c){
+    var stars="";for(var n=1;n<=5;n++)stars+='<div class="star" onclick="rate(\''+c.id+'\','+n+')">'+n+'</div>';
+    rows+='<div class="crit-row" id="crow-'+c.id+'"><div class="crit-info"><div class="crit-name">'+c.name+'</div><div class="crit-desc">'+c.desc+' <span style="color:var(--muted);font-size:10px;">('+Math.round(c.w*100)+'%)</span></div></div><div class="stars" id="stars-'+c.id+'">'+stars+'</div><div class="crit-num" id="num-'+c.id+'">—</div></div>';
+  });
+  document.getElementById("ev-body").innerHTML=
+    '<div class="privacy-banner">🔒 <div>Your identity is <strong>fully protected</strong>. This evaluation is submitted anonymously.</div></div>'+
+    '<div class="eval-hero"><div class="eval-teacher-av" style="background:'+t.bg+';color:'+t.color+'">'+t.initials+'</div><div class="eval-hero-text"><div class="eval-hero-name">'+t.name+'</div><div class="eval-hero-meta">'+t.dept+' · '+rLabel+' Evaluation · '+wt+'% weight</div><div class="anon-badge">🔒 Anonymous Response</div></div></div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="criteria-section"><div class="criteria-section-title">Rate from 1 (Poor) to 5 (Excellent)</div>'+rows+'</div>'+
+    '<div class="fl"><label>Comments (anonymous)</label><textarea class="inp" id="ev-comment" rows="3" placeholder="Your observations..."></textarea></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn" onclick="go(\'dashboard\')">Cancel</button><button class="btn btn-primary" id="submit-btn" onclick="submitEval(\''+tid+'\')">Submit Evaluation</button></div></div>';
+}
+
+function rate(cid,val){
+  ratingVals[cid]=val;
+  document.querySelectorAll("#stars-"+cid+" .star").forEach(function(s,i){s.classList.toggle("on",i<val);});
+  document.getElementById("num-"+cid).textContent=val;
+  var r=document.getElementById("crow-"+cid);if(r)r.classList.add("rated");
+}
+
+// ── SUBMIT EVAL — fully client-side, no PHP ───────────────────────────────────
+function submitEval(tid){
+  var grp=currentRole==="ph"?"ph":currentRole==="dean"?"dean":"student";
+  var miss=CRITERIA[grp].filter(function(c){return !ratingVals[c.id];});
+  if(miss.length){toast("Please rate all "+miss.length+" remaining criteria before submitting","inf");return;}
+
+  // Disable button to prevent double submit
+  var btn=document.getElementById("submit-btn");
+  if(btn){btn.disabled=true;btn.textContent="Submitting…";}
+
+  // Simulate a brief async delay (as if hitting a server)
+  setTimeout(function(){
+    // 1. Update in-memory scores with the new ratings
+    CRITERIA[grp].forEach(function(c){SCORES[tid][grp][c.id]=ratingVals[c.id];});
+
+    // 2. Mark this teacher as evaluated for this role
+    SUBMITTED[currentRole]=SUBMITTED[currentRole]||{};
+    SUBMITTED[currentRole][tid]=true;
+
+    // 3. Add to audit log
+    var tn=(TEACHERS.find(function(x){return x.id===tid;})||{}).name||"";
+    AUDIT.unshift({t:new Date().toLocaleString(),who:anonLabel(currentRole),what:"Submitted evaluation for "+tn,type:"eval"});
+
+    // 4. Show success overlay then redirect to dashboard
+    showSuccessOverlay(tn,function(){
+      ratingVals={};
+      go("dashboard");
+    });
+  },500);
+}
+
+function showSuccessOverlay(teacherName,onDone){
+  var overlay=document.createElement("div");
+  overlay.className="success-overlay";
+  overlay.innerHTML=
+    '<div class="success-box">'+
+    '<div class="success-icon">✅</div>'+
+    '<div class="success-title">Evaluation submitted!</div>'+
+    '<div class="success-sub">Your anonymous evaluation for <strong>'+teacherName+'</strong> has been recorded. Your identity remains fully protected.</div>'+
+    '<button class="btn btn-primary" style="width:100%;" id="success-ok-btn">Back to Dashboard</button>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  document.getElementById("success-ok-btn").onclick=function(){
+    overlay.remove();
+    onDone();
+  };
+  // Also auto-redirect after 3s
+  setTimeout(function(){if(document.body.contains(overlay)){overlay.remove();onDone();}},3000);
+}
+
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+function rReports(){
+  var P=document.getElementById("panel"),sc=TEACHERS.map(function(t){return{t:t,s:composite(t.id)};}),cards="";
+  sc.forEach(function(x){
+    var t=x.t,s=x.s;
+    cards+='<div class="tc"><div class="tc-top"><div class="tc-av" style="background:'+t.bg+';color:'+t.color+'">'+t.initials+'</div><div><div class="tc-name">'+t.name+'</div><div class="tc-dept">'+t.dept+'</div></div></div><div class="tc-score-row"><div class="tc-score-big" style="color:'+scoreColor(s)+'">'+s+'</div><div class="tc-score-max">/100 '+scoreTag(s)+'</div></div><div class="tc-bars"><div class="tc-bar-row"><div class="tc-bar-label">Students</div><div class="tc-bar-track"><div class="tc-bar-fill" style="width:'+(grpAvg(t.id,"student")/5*100)+'%;background:var(--accent)"></div></div><div class="tc-bar-val">'+grpAvg(t.id,"student")+'</div></div><div class="tc-bar-row"><div class="tc-bar-label">Prog. Head</div><div class="tc-bar-track"><div class="tc-bar-fill" style="width:'+(grpAvg(t.id,"ph")/5*100)+'%;background:var(--green)"></div></div><div class="tc-bar-val">'+grpAvg(t.id,"ph")+'</div></div><div class="tc-bar-row"><div class="tc-bar-label">Dean</div><div class="tc-bar-track"><div class="tc-bar-fill" style="width:'+(grpAvg(t.id,"dean")/5*100)+'%;background:var(--amber)"></div></div><div class="tc-bar-val">'+grpAvg(t.id,"dean")+'</div></div></div></div>';
+  });
+  P.innerHTML='<div class="g3" style="margin-bottom:16px">'+cards+'</div><div class="card"><div class="card-head"><div class="card-title">Weighted Score Breakdown</div><div style="display:flex;gap:8px"><button class="btn" onclick="doExportCSV()">Export CSV</button><button class="btn btn-primary" onclick="doExportPDF()">Export PDF</button></div></div><div class="chart-wrap" style="height:220px"><canvas id="c-breakdown"></canvas></div></div>';
+}
+
+// ── AUDIT ─────────────────────────────────────────────────────────────────────
+function rAudit(){
+  var tc={eval:"var(--green)",remind:"var(--amber)",export:"var(--accent)",system:"var(--muted)"},rows="";
+  AUDIT.forEach(function(a){rows+='<div class="audit-row"><div class="audit-dot" style="background:'+(tc[a.type]||"var(--muted)")+'"></div><div><div class="audit-act">'+a.what+'</div><div class="audit-meta">'+a.who+" · "+a.t+'</div></div></div>';});
+  document.getElementById("panel").innerHTML='<div class="card"><div class="card-head"><div class="card-title">Audit Trail</div><input class="inp" style="width:180px;margin-bottom:0" type="text" placeholder="Filter..." oninput="filterAudit(this.value)"></div><div id="audit-body">'+rows+'</div></div>';
+}
+
+function filterAudit(q){
+  var tc={eval:"var(--green)",remind:"var(--amber)",export:"var(--accent)",system:"var(--muted)"},rows="";
+  AUDIT.filter(function(a){return(a.what+a.who).toLowerCase().includes(q.toLowerCase());}).forEach(function(a){rows+='<div class="audit-row"><div class="audit-dot" style="background:'+(tc[a.type]||"var(--muted)")+'"></div><div><div class="audit-act">'+a.what+'</div><div class="audit-meta">'+a.who+" · "+a.t+'</div></div></div>';});
+  document.getElementById("audit-body").innerHTML=rows||'<p style="color:var(--muted);padding:10px 0;font-size:12px">No results.</p>';
+}
+
+// ── FACULTY ───────────────────────────────────────────────────────────────────
+function rFaculty(){
+  var cards="";
+  TEACHERS.forEach(function(t){
+    var s=composite(t.id),mini="";
+    [["Students",grpAvg(t.id,"student"),"var(--accent)"],["Prog. Head",grpAvg(t.id,"ph"),"var(--green)"],["Dean",grpAvg(t.id,"dean"),"var(--amber)"]].forEach(function(m){mini+='<div style="text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px"><div style="font-size:18px;font-weight:600;color:'+m[2]+'">'+m[1]+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+m[0]+'</div></div>';});
+    cards+='<div class="card" style="border-top:2px solid '+t.color+'"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div style="width:40px;height:40px;border-radius:9px;background:'+t.bg+';color:'+t.color+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">'+t.initials+'</div><div style="flex:1"><div style="font-size:13px;font-weight:500">'+t.name+'</div><div style="font-size:11px;color:var(--muted)">'+t.dept+'</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:600;color:'+scoreColor(s)+'">'+s+'</div>'+scoreTag(s)+'</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+mini+'</div></div>';
+  });
+  document.getElementById("panel").innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-primary" onclick="toast(\'Add faculty coming soon\',\'inf\')">+ Add Faculty</button></div><div class="g2">'+cards+'</div>';
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function rHistory(){
+  var submitted=SUBMITTED[currentRole]||{},rows="";
+  TEACHERS.forEach(function(t){
+    var done=!!submitted[t.id];
+    rows+='<tr><td>'+t.name+'</td><td>'+(done?new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'<span style="color:var(--muted)">—</span>')+'</td><td>'+(done?'<span class="tag tag-green">Submitted (Anonymous)</span>':'<span class="tag tag-amber">Pending</span>')+'</td></tr>';
+  });
+  document.getElementById("panel").innerHTML='<div class="card"><div class="card-head"><div class="card-title">My Submission History</div></div><table><thead><tr><th>Faculty</th><th>Date</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+
+function applyPeriod(){
+  var el = document.getElementById("sb-period");
+  if(el) el.textContent = "AY " + PERIOD.ay + " · " + PERIOD.sem.replace("Semester ","Sem ");
+}
+
+function saveSettings(){
+  var ayEl  = document.getElementById("set-ay");
+  var semEl = document.getElementById("set-sem");
+  var dlEl  = document.getElementById("set-dl");
+  if(!ayEl) return;
+  PERIOD.ay       = ayEl.value;
+  PERIOD.sem      = semEl.value;
+  PERIOD.deadline = dlEl.value;
+  applyPeriod();
+  // Update topbar title if still on settings
+  AUDIT.unshift({t:new Date().toLocaleString(),who:"Admin [Anon]",what:"Updated evaluation period to AY "+PERIOD.ay+" "+PERIOD.sem,type:"system"});
+  toast("Settings saved — period updated to AY " + PERIOD.ay + " · " + PERIOD.sem, "ok");
+}
+
+function rSettings(){
+  var tog="",wt="";
+  ["Send to students with pending evals","Send to Program Heads","Send to Dean","Auto-remind 3 days before deadline"].forEach(function(s){tog+='<div class="settings-row"><span style="font-size:13px;color:var(--text2)">'+s+'</span><button class="toggle on" onclick="this.classList.toggle(\'on\')"></button></div>';});
+  [["Students","50","var(--accent)"],["Program Head","30","var(--green)"],["Dean","20","var(--amber)"]].forEach(function(w){wt+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px"><span style="color:var(--text2)">'+w[0]+'</span><span style="font-weight:600;color:'+w[2]+'">'+w[1]+'%</span></div><div class="prog-track"><div class="prog-fill" style="width:'+w[1]+'%;background:'+w[2]+'"></div></div></div>';});
+
+  // Build academic year options (5 years back, 2 years forward)
+  var currentAY = 2024;
+  var ayOpts = "";
+  for(var y = currentAY - 4; y <= currentAY + 2; y++){
+    var val = y + "–" + (y+1);
+    ayOpts += '<option value="'+val+'"'+(val===PERIOD.ay?' selected':'')+'>'+val+'</option>';
+  }
+
+  document.getElementById("panel").innerHTML=
+    '<div class="g2">'+
+      '<div class="card">'+
+        '<div class="card-head"><div class="card-title">Evaluation Period</div></div>'+
+        // Academic Year — now a real dropdown
+        '<div class="fl">'+
+          '<label for="set-ay">Academic Year</label>'+
+          '<select class="inp" id="set-ay">'+ayOpts+'</select>'+
+        '</div>'+
+        // Semester
+        '<div class="fl">'+
+          '<label for="set-sem">Semester</label>'+
+          '<select class="inp" id="set-sem">'+
+            '<option'+(PERIOD.sem==="Semester 1"?' selected':'')+'>Semester 1</option>'+
+            '<option'+(PERIOD.sem==="Semester 2"?' selected':'')+'>Semester 2</option>'+
+          '</select>'+
+        '</div>'+
+        // Deadline
+        '<div class="fl">'+
+          '<label for="set-dl">Deadline</label>'+
+          '<input class="inp" type="date" id="set-dl" value="'+PERIOD.deadline+'">'+
+        '</div>'+
+        // Preview badge
+        '<div style="background:var(--accent-light);border:1px solid #bfdbfe;border-radius:var(--r);padding:8px 12px;font-size:11px;color:var(--accent);margin-bottom:14px;" id="period-preview">'+
+          'Preview: AY '+PERIOD.ay+' · '+PERIOD.sem.replace("Semester ","Sem ")+
+        '</div>'+
+        '<button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>'+
+      '</div>'+
+      '<div class="card"><div class="card-head"><div class="card-title">Email Reminders</div></div>'+tog+'<button class="btn btn-primary" style="margin-top:14px" onclick="sendReminders()">Send Now</button></div>'+
+      '<div class="card"><div class="card-head"><div class="card-title">Score Weights</div></div>'+wt+'<p style="font-size:11px;color:var(--muted);margin-top:8px">Contact system admin to modify weights.</p></div>'+
+    '</div>';
+
+  // Live preview update as user changes dropdowns
+  ["set-ay","set-sem"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener("change", function(){
+      var ay  = document.getElementById("set-ay").value;
+      var sem = document.getElementById("set-sem").value;
+      var prev = document.getElementById("period-preview");
+      if(prev) prev.textContent = "Preview: AY " + ay + " · " + sem.replace("Semester ","Sem ");
+    });
+  });
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+function initCharts(){
+  var sc=TEACHERS.map(function(t){return composite(t.id);}),lb=TEACHERS.map(function(t){return t.name.split(" ").pop();});
+  var gridColor="rgba(0,0,0,0.06)",tickColor="rgba(0,0,0,0.35)";
+  var dk={color:gridColor,ticks:{color:tickColor,font:{family:"DM Sans",size:10}}};
+  var nl={plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:false};
+  function mk(id,cfg){var el=document.getElementById(id);if(!el)return;if(charts[id])try{charts[id].destroy();}catch(e){}charts[id]=new Chart(el,cfg);}
+  var barColors=["rgba(37,99,235,0.7)","rgba(22,163,74,0.7)","rgba(220,38,38,0.7)","rgba(217,119,6,0.7)"];
+  var barBorder=["#2563eb","#16a34a","#dc2626","#d97706"];
+  mk("c-overview",{type:"bar",data:{labels:lb,datasets:[{data:sc,backgroundColor:barColors,borderColor:barBorder,borderWidth:1.5,borderRadius:5}]},options:Object.assign({},nl,{scales:{y:{min:50,max:100,grid:dk,ticks:dk.ticks},x:{grid:{display:false},ticks:dk.ticks}}})});
+  mk("c-dist",{type:"doughnut",data:{labels:["Excellent","Good","Average","Needs Work"],datasets:[{data:[1,2,1,0],backgroundColor:["#16a34a","#2563eb","#d97706","#dc2626"],borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"rgba(0,0,0,0.45)",font:{family:"DM Sans",size:10},padding:10}}}}});
+  mk("c-trend",{type:"line",data:{labels:["Sem1-22","Sem2-22","Sem1-23","Sem2-23","Sem1-24","Sem2-24"],datasets:[{data:[72,75,78,80,82,84],borderColor:"#2563eb",backgroundColor:"rgba(37,99,235,0.06)",tension:0.4,fill:true,pointRadius:4,pointBackgroundColor:"#2563eb"}]},options:Object.assign({},nl,{scales:{y:{min:60,max:100,grid:dk,ticks:dk.ticks},x:{grid:{display:false},ticks:dk.ticks}}})});
+  mk("c-fac",{type:"bar",data:{labels:lb,datasets:[{data:sc,backgroundColor:barColors,borderColor:barBorder,borderWidth:1.5,borderRadius:5}]},options:Object.assign({},nl,{scales:{y:{min:50,max:100,grid:dk,ticks:dk.ticks},x:{grid:{display:false},ticks:dk.ticks}}})});
+  mk("c-breakdown",{type:"bar",data:{labels:lb,datasets:[{label:"Students (50%)",data:TEACHERS.map(function(t){return grpAvg(t.id,"student");}),backgroundColor:"rgba(37,99,235,0.7)",borderRadius:3},{label:"Prog. Head (30%)",data:TEACHERS.map(function(t){return grpAvg(t.id,"ph");}),backgroundColor:"rgba(22,163,74,0.7)",borderRadius:3},{label:"Dean (20%)",data:TEACHERS.map(function(t){return grpAvg(t.id,"dean");}),backgroundColor:"rgba(217,119,6,0.7)",borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"rgba(0,0,0,0.45)",font:{family:"DM Sans",size:10},padding:12}}},scales:{y:{min:0,max:5,grid:dk,ticks:dk.ticks},x:{grid:{display:false},ticks:dk.ticks}}}});
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function doExportPDF(){
+  try{
+    var doc=new window.jspdf.jsPDF();
+    doc.setFillColor(247,247,245);doc.rect(0,0,210,297,"F");
+    doc.setTextColor(37,99,235);doc.setFont("helvetica","bold");doc.setFontSize(20);doc.text("evalify",20,20);
+    doc.setTextColor(90,90,85);doc.setFontSize(10);doc.setFont("helvetica","normal");
+    doc.text("Faculty Evaluation Report — AY 2024-2025 Semester 2",20,28);
+    doc.text("Generated: "+new Date().toLocaleDateString(),20,34);
+    doc.setDrawColor(228,228,224);doc.line(20,38,190,38);
+    var y=48;
+    TEACHERS.forEach(function(t){
+      var s=composite(t.id);
+      doc.setTextColor(26,26,24);doc.setFont("helvetica","bold");doc.setFontSize(12);doc.text(t.name,20,y);y+=5;
+      doc.setTextColor(90,90,85);doc.setFont("helvetica","normal");doc.setFontSize(10);doc.text(t.dept+"  Score: "+s+"/100",20,y);y+=9;
+      if(y>260){doc.addPage();doc.setFillColor(247,247,245);doc.rect(0,0,210,297,"F");y=20;}
+    });
+    doc.save("evalify_report.pdf");toast("PDF exported","ok");
+  }catch(e){toast("PDF export failed: "+e.message,"err");}
+}
+
+function doExportCSV(){
+  var rows=[["Faculty","Dept","Score","Students","PH","Dean"]];
+  TEACHERS.forEach(function(t){var s=composite(t.id);rows.push([t.name,t.dept,s,grpAvg(t.id,"student"),grpAvg(t.id,"ph"),grpAvg(t.id,"dean")]);});
+  var blob=new Blob([rows.map(function(r){return r.join(",");}).join("\n")],{type:"text/csv"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="evalify.csv";a.click();
+  toast("CSV exported","ok");
+}
+
+// ── REMINDERS — client-side mock ──────────────────────────────────────────────
+function sendReminders(){
+  AUDIT.unshift({t:new Date().toLocaleString(),who:"System",what:"Sent email reminders to pending evaluators",type:"remind"});
+  toast("Reminders sent to pending evaluators","ok");
+}
+</script>
+</body>
+</html>
